@@ -5,16 +5,35 @@
 # of truth for config, secrets, sessions, memories, skills, profiles, cron, and
 # logs.
 services:
+  hermes-seed:
+    image: alpine:3.20
+    restart: "no"
+    volumes:
+      - hermes-data:/opt/data
+      - ./deploy/hermes/SOUL.md:/seed/SOUL.md:ro
+      - ./deploy/hermes/.hermes.md:/seed/.hermes.md:ro
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        mkdir -p /opt/data
+        cp /seed/SOUL.md /opt/data/SOUL.md
+        cp /seed/.hermes.md /opt/data/.hermes.md
+        chown 10000:10000 /opt/data/SOUL.md /opt/data/.hermes.md
+        chmod 0640 /opt/data/SOUL.md /opt/data/.hermes.md
+
   hermes:
     image: nousresearch/hermes-agent:latest
     restart: unless-stopped
+    depends_on:
+      hermes-seed:
+        condition: service_completed_successfully
     command: ["gateway", "run"]
     ports:
       - "8642:8642"
     volumes:
       - hermes-data:/opt/data
-      - ./deploy/hermes/SOUL.md:/opt/data/SOUL.md:ro
-      - ./deploy/hermes/.hermes.md:/opt/data/.hermes.md:ro
     environment:
       HERMES_UID: "${HERMES_UID:-10000}"
       HERMES_GID: "${HERMES_GID:-10000}"

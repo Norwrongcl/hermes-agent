@@ -84,17 +84,27 @@ fully understand that Hermes can run tools and terminal commands.
 
 ## VcM Identity And Context
 
-The Coolify compose mounts versioned context files:
+The Coolify compose copies versioned context files into the persistent volume
+before the main Hermes gateway starts:
 
 ```yaml
-./deploy/hermes/SOUL.md:/opt/data/SOUL.md:ro
-./deploy/hermes/.hermes.md:/opt/data/.hermes.md:ro
+hermes-seed:
+  image: alpine:3.20
+  volumes:
+    - hermes-data:/opt/data
+    - ./deploy/hermes/SOUL.md:/seed/SOUL.md:ro
+    - ./deploy/hermes/.hermes.md:/seed/.hermes.md:ro
 ```
 
 `SOUL.md` makes Hermes act as the Digital Operations Director for the VcM
 platform. `.hermes.md` gives Hermes the project operating context: this is a
 VcM operations platform with specialized agents, not a chatbot, Wiki-RAG, or
 document search system.
+
+Do not bind-mount `SOUL.md` directly over `/opt/data/SOUL.md`. The official
+Hermes Docker startup script seeds and chowns files under `/opt/data`; direct
+file bind mounts can make that hook treat the path incorrectly or fail on a
+read-only file.
 
 Do not store secrets in these files.
 
