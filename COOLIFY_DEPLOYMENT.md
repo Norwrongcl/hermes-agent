@@ -1,13 +1,14 @@
 # Hermes Agent on Coolify
 
 This repo already contains an official production Dockerfile and published
-image. For Coolify, prefer `docker-compose.coolify.yml`: it uses
-`nousresearch/hermes-agent:latest`, keeps the official `/init` entrypoint, and
-mounts persistent storage at `/opt/data`.
+image. For Coolify, prefer `docker-compose.coolify.yml`: it builds a minimal
+Coolify image from `nousresearch/hermes-agent:latest`, keeps the official
+`/init` entrypoint, and mounts persistent storage at `/opt/data`.
 
-This deployment repairs the existing Coolify application:
+Current clean Coolify application:
 
-- Application UUID: `howwk4ocgcggg4gg0g448sco`
+- Application UUID: `tw12oif9lhhx5t9871mk7z9c`
+- Name: `Hermes Agent VcM`
 - Repository: `Norwrongcl/hermes-agent`
 - Branch: `main`
 - Compose file: `/docker-compose.coolify.yml`
@@ -37,6 +38,7 @@ time.
 
 - Build/deploy type: Docker Compose
 - Compose file: `docker-compose.coolify.yml`
+- Dockerfile: `Dockerfile.coolify`
 - Service: `hermes`
 - Internal API port: `8642`
 - App/exposed port in Coolify: `8642` (not `3000`)
@@ -84,16 +86,13 @@ fully understand that Hermes can run tools and terminal commands.
 
 ## VcM Identity And Context
 
-The Coolify compose bind-mounts versioned context files under `/seed`, then
-copies them into the persistent volume before the Hermes gateway starts:
+`Dockerfile.coolify` adds a small `00-vcm-context` startup hook. The hook copies
+the versioned context files into the persistent volume before the official
+Hermes Docker setup hook runs:
 
 ```yaml
-hermes:
-  command: ["sh", "-lc", "cp /seed/SOUL.md /opt/data/SOUL.md && cp /seed/.hermes.md /opt/data/.hermes.md && exec hermes gateway run"]
-  volumes:
-    - hermes-data:/opt/data
-    - ./deploy/hermes/SOUL.md:/seed/SOUL.md:ro
-    - ./deploy/hermes/.hermes.md:/seed/.hermes.md:ro
+COPY deploy/hermes/SOUL.md /opt/hermes/vcm/SOUL.md
+COPY deploy/hermes/.hermes.md /opt/hermes/vcm/.hermes.md
 ```
 
 `SOUL.md` makes Hermes act as the Digital Operations Director for the VcM

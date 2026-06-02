@@ -6,25 +6,15 @@
 # logs.
 services:
   hermes:
-    image: nousresearch/hermes-agent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify
     restart: unless-stopped
-    command:
-      - sh
-      - -lc
-      - |
-        set -eu
-        if [ -d /opt/data/SOUL.md ]; then rm -rf /opt/data/SOUL.md; fi
-        if [ -d /opt/data/.hermes.md ]; then rm -rf /opt/data/.hermes.md; fi
-        cp /seed/SOUL.md /opt/data/SOUL.md
-        cp /seed/.hermes.md /opt/data/.hermes.md
-        chmod 0640 /opt/data/SOUL.md /opt/data/.hermes.md 2>/dev/null || true
-        exec hermes gateway run
+    command: ["gateway", "run"]
     ports:
       - "8642:8642"
     volumes:
       - hermes-data:/opt/data
-      - ./deploy/hermes/SOUL.md:/seed/SOUL.md:ro
-      - ./deploy/hermes/.hermes.md:/seed/.hermes.md:ro
     environment:
       HERMES_UID: "${HERMES_UID:-10000}"
       HERMES_GID: "${HERMES_GID:-10000}"

@@ -1,0 +1,21 @@
+FROM nousresearch/hermes-agent:latest
+
+COPY deploy/hermes/SOUL.md /opt/hermes/vcm/SOUL.md
+COPY deploy/hermes/.hermes.md /opt/hermes/vcm/.hermes.md
+
+RUN cat > /etc/cont-init.d/00-vcm-context <<'EOF' && chmod +x /etc/cont-init.d/00-vcm-context
+#!/bin/sh
+set -eu
+
+HERMES_HOME="${HERMES_HOME:-/opt/data}"
+mkdir -p "$HERMES_HOME"
+
+if [ -d "$HERMES_HOME/SOUL.md" ]; then rm -rf "$HERMES_HOME/SOUL.md"; fi
+if [ -d "$HERMES_HOME/.hermes.md" ]; then rm -rf "$HERMES_HOME/.hermes.md"; fi
+
+cp /opt/hermes/vcm/SOUL.md "$HERMES_HOME/SOUL.md"
+cp /opt/hermes/vcm/.hermes.md "$HERMES_HOME/.hermes.md"
+
+chown hermes:hermes "$HERMES_HOME/SOUL.md" "$HERMES_HOME/.hermes.md" 2>/dev/null || true
+chmod 0640 "$HERMES_HOME/SOUL.md" "$HERMES_HOME/.hermes.md" 2>/dev/null || true
+EOF
