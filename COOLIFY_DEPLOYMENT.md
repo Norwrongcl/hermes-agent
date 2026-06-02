@@ -84,12 +84,12 @@ fully understand that Hermes can run tools and terminal commands.
 
 ## VcM Identity And Context
 
-The Coolify compose copies versioned context files into the persistent volume
-before the main Hermes gateway starts:
+The Coolify compose bind-mounts versioned context files under `/seed`, then
+copies them into the persistent volume before the Hermes gateway starts:
 
 ```yaml
-hermes-seed:
-  image: alpine:3.20
+hermes:
+  command: ["sh", "-lc", "cp /seed/SOUL.md /opt/data/SOUL.md && cp /seed/.hermes.md /opt/data/.hermes.md && exec hermes gateway run"]
   volumes:
     - hermes-data:/opt/data
     - ./deploy/hermes/SOUL.md:/seed/SOUL.md:ro
