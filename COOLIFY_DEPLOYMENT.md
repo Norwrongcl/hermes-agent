@@ -5,6 +5,14 @@ image. For Coolify, prefer `docker-compose.coolify.yml`: it uses
 `nousresearch/hermes-agent:latest`, keeps the official `/init` entrypoint, and
 mounts persistent storage at `/opt/data`.
 
+This deployment repairs the existing Coolify application:
+
+- Application UUID: `howwk4ocgcggg4gg0g448sco`
+- Repository: `Norwrongcl/hermes-agent`
+- Branch: `main`
+- Compose file: `/docker-compose.coolify.yml`
+- Project: `Taller Ing SW`
+
 ## Persistent Data
 
 The `/opt/data` volume must persist across restarts and redeploys. It contains:
@@ -12,6 +20,7 @@ The `/opt/data` volume must persist across restarts and redeploys. It contains:
 - `.env` and `auth.json`
 - `config.yaml`
 - `SOUL.md`
+- `.hermes.md`
 - `state.db`
 - `sessions/`
 - `memories/`
@@ -30,7 +39,8 @@ time.
 - Compose file: `docker-compose.coolify.yml`
 - Service: `hermes`
 - Internal API port: `8642`
-- Dashboard port: `9119`
+- App/exposed port in Coolify: `8642` (not `3000`)
+- Dashboard port: disabled in v1
 - Persistent volume: `hermes-data:/opt/data`
 - Start command: leave default from compose, `gateway run`
 - Entrypoint: do not override
@@ -71,6 +81,36 @@ TELEGRAM_ALLOWED_USERS=<comma-separated-user-ids>
 
 Do not set `GATEWAY_ALLOW_ALL_USERS=true` on an internet-facing VPS unless you
 fully understand that Hermes can run tools and terminal commands.
+
+## VcM Identity And Context
+
+The Coolify compose mounts versioned context files:
+
+```yaml
+./deploy/hermes/SOUL.md:/opt/data/SOUL.md:ro
+./deploy/hermes/.hermes.md:/opt/data/.hermes.md:ro
+```
+
+`SOUL.md` makes Hermes act as the Digital Operations Director for the VcM
+platform. `.hermes.md` gives Hermes the project operating context: this is a
+VcM operations platform with specialized agents, not a chatbot, Wiki-RAG, or
+document search system.
+
+Do not store secrets in these files.
+
+## Repair Existing Coolify App
+
+If Coolify detected the app as port `3000`, change it manually in the panel:
+
+- App/exposed port: `8642`
+- Remove any `3000` port setting
+- Healthcheck path: `/health`
+- Healthcheck port: `8642`
+- Healthcheck scheme: `http`
+- Expected status: `200`
+
+Keep FQDN empty for the initial private API deployment unless you are ready to
+put authentication and network policy in front of the endpoint.
 
 ## First Boot
 
