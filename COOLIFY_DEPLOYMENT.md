@@ -74,6 +74,22 @@ key, for example:
 OPENROUTER_API_KEY=<key>
 ```
 
+For ContentHub image generation through Azure OpenAI / Azure AI Foundry, set:
+
+```env
+AZURE_FOUNDRY_BASE_URL=https://<resource>.openai.azure.com
+AZURE_FOUNDRY_API_KEY=<azure-openai-key>
+AZURE_IMAGE_DEPLOYMENT=<image-deployment-name>
+AZURE_IMAGE_API_VERSION=2025-04-01-preview
+AZURE_IMAGE_MODEL=gpt-image-1-medium
+```
+
+`Dockerfile.coolify` forces `image_gen.provider: azure-openai` in
+`/opt/data/config.yaml` on boot, so Hermes should call the standard
+`image_generate` tool and let the Azure backend handle the API call. Set
+`HERMES_VCM_FORCE_AZURE_IMAGE_GEN=false` only if you intentionally want another
+image provider.
+
 For a Telegram bot:
 
 ```env
