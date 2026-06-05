@@ -68,6 +68,32 @@ def _env(name: str) -> str:
     return os.environ.get(name, "").strip()
 
 
+def _normalize_base_url(value: str) -> str:
+    """Return the Azure AI Foundry resource root.
+
+    Operators may already have ``AZURE_FOUNDRY_BASE_URL`` configured for
+    OpenAI-compatible model calls as ``...services.ai.azure.com/openai/v1``.
+    The provider endpoint needs the resource root before ``/providers/...``.
+    """
+    base = (value or "").strip().rstrip("/")
+    for suffix in ("/openai/v1", "/openai"):
+        if base.endswith(suffix):
+            return base[: -len(suffix)].rstrip("/")
+    return base
+
+
+def _resolve_api_version(value: str) -> str:
+    """Prefer the provider preview API version for FLUX provider endpoints."""
+    candidate = (value or "").strip()
+    if not candidate:
+        return DEFAULT_API_VERSION
+    # Legacy OpenAI image API versions do not apply to Foundry provider
+    # routes like /providers/blackforestlabs/v1/flux-2-pro.
+    if candidate.startswith("20"):
+        return DEFAULT_API_VERSION
+    return candidate
+
+
 def _load_image_gen_config() -> Dict[str, Any]:
     try:
         from hermes_cli.config import load_config
@@ -171,11 +197,11 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
             )
 
         full_endpoint = _env("AZURE_IMAGE_ENDPOINT").rstrip("/")
-        base_url = _env("AZURE_FOUNDRY_BASE_URL").rstrip("/")
+        base_url = _normalize_base_url(_env("AZURE_FOUNDRY_BASE_URL"))
         api_key = _env("AZURE_API_KEY") or _env("AZURE_FOUNDRY_API_KEY")
         provider = _env("AZURE_IMAGE_PROVIDER") or DEFAULT_PROVIDER
         deployment = _env("AZURE_IMAGE_DEPLOYMENT") or DEFAULT_DEPLOYMENT
-        api_version = _env("AZURE_IMAGE_API_VERSION") or DEFAULT_API_VERSION
+        api_version = _resolve_api_version(_env("AZURE_IMAGE_API_VERSION"))
 
         if not api_key or not (full_endpoint or base_url):
             return error_response(
