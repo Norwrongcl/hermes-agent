@@ -4,6 +4,7 @@ COPY deploy/hermes/SOUL.md /opt/hermes/vcm/SOUL.md
 COPY deploy/hermes/.hermes.md /opt/hermes/vcm/.hermes.md
 COPY toolsets.py /opt/hermes/toolsets.py
 COPY tools/contenthub_vcm_tool.py /opt/hermes/tools/contenthub_vcm_tool.py
+COPY plugins/image_gen/azure-openai/ /opt/hermes/plugins/image_gen/azure-openai/
 COPY skills/domain/contenthub-vcm/ /opt/hermes/skills/domain/contenthub-vcm/
 
 RUN cat > /etc/cont-init.d/00-vcm-context <<'EOF' && chmod +x /etc/cont-init.d/00-vcm-context
@@ -25,4 +26,50 @@ chmod 0640 "$HERMES_HOME/SOUL.md" "$HERMES_HOME/.hermes.md" 2>/dev/null || true
 mkdir -p "$HERMES_HOME/skills/domain/contenthub-vcm"
 cp -R /opt/hermes/skills/domain/contenthub-vcm/. "$HERMES_HOME/skills/domain/contenthub-vcm/"
 chown -R hermes:hermes "$HERMES_HOME/skills/domain/contenthub-vcm" 2>/dev/null || true
+EOF
+
+RUN cat > /etc/cont-init.d/90-vcm-image-config <<'EOF' && chmod +x /etc/cont-init.d/90-vcm-image-config
+#!/bin/sh
+set -eu
+
+HERMES_HOME="${HERMES_HOME:-/opt/data}"
+CONFIG="$HERMES_HOME/config.yaml"
+
+if [ "${HERMES_VCM_FORCE_AZURE_IMAGE_GEN:-true}" != "true" ]; then
+    exit 0
+fi
+
+if [ ! -f "$CONFIG" ]; then
+    exit 0
+fi
+
+/opt/hermes/.venv/bin/python - "$CONFIG" <<'PY'
+from pathlib import Path
+import sys
+import yaml
+
+path = Path(sys.argv[1])
+try:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+except Exception:
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+
+image_gen = data.setdefault("image_gen", {})
+if not isinstance(image_gen, dict):
+    image_gen = {}
+    data["image_gen"] = image_gen
+
+image_gen["provider"] = "azure-openai"
+image_gen.setdefault("model", "gpt-image-1-medium")
+azure = image_gen.setdefault("azure-openai", {})
+if isinstance(azure, dict):
+    azure.setdefault("model", image_gen.get("model", "gpt-image-1-medium"))
+
+path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+PY
+
+chown hermes:hermes "$CONFIG" 2>/dev/null || true
+chmod 0640 "$CONFIG" 2>/dev/null || true
 EOF
