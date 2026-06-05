@@ -50,6 +50,8 @@ _HERMES_CORE_TOOLS = [
     "todo", "memory",
     # Session history search
     "session_search",
+    # ContentHub VcM operational data from Convex
+    "contenthub_vcm_query",
     # Clarifying questions
     "clarify",
     # Code execution + delegation
@@ -225,6 +227,12 @@ TOOLSETS = {
     "session_search": {
         "description": "Search and recall past conversations with summarization",
         "tools": ["session_search"],
+        "includes": []
+    },
+
+    "contenthub_vcm": {
+        "description": "Read-only ContentHub VcM operational queries from Convex",
+        "tools": ["contenthub_vcm_query"],
         "includes": []
     },
     
