@@ -51,7 +51,7 @@ _HERMES_CORE_TOOLS = [
     # Session history search
     "session_search",
     # ContentHub VcM operational data from Convex
-    "contenthub_vcm_query",
+    "contenthub_vcm_query", "contenthub_vcm_list",
     # Clarifying questions
     "clarify",
     # Code execution + delegation
@@ -231,8 +231,8 @@ TOOLSETS = {
     },
 
     "contenthub_vcm": {
-        "description": "Read-only ContentHub VcM operational queries from Convex",
-        "tools": ["contenthub_vcm_query"],
+        "description": "ContentHub VcM operational CRUD from Convex with audit guardrails",
+        "tools": ["contenthub_vcm_query", "contenthub_vcm_list"],
         "includes": []
     },
     
