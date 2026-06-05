@@ -74,14 +74,22 @@ key, for example:
 OPENROUTER_API_KEY=<key>
 ```
 
-For ContentHub image generation through Azure OpenAI / Azure AI Foundry, set:
+For ContentHub image generation through Azure AI Foundry FLUX.2 Pro, set:
 
 ```env
-AZURE_FOUNDRY_BASE_URL=https://<resource>.openai.azure.com
-AZURE_FOUNDRY_API_KEY=<azure-openai-key>
-AZURE_IMAGE_DEPLOYMENT=<image-deployment-name>
-AZURE_IMAGE_API_VERSION=2025-04-01-preview
-AZURE_IMAGE_MODEL=gpt-image-1-medium
+AZURE_FOUNDRY_BASE_URL=https://brunotoroc-0874-resource.services.ai.azure.com
+AZURE_API_KEY=<azure-ai-foundry-key>
+AZURE_IMAGE_PROVIDER=blackforestlabs
+AZURE_IMAGE_DEPLOYMENT=flux-2-pro
+AZURE_IMAGE_API_VERSION=preview
+AZURE_IMAGE_MODEL=FLUX.2-pro
+```
+
+Alternatively, set `AZURE_IMAGE_ENDPOINT` to the full provider URL without the
+query string:
+
+```env
+AZURE_IMAGE_ENDPOINT=https://brunotoroc-0874-resource.services.ai.azure.com/providers/blackforestlabs/v1/flux-2-pro
 ```
 
 `Dockerfile.coolify` forces `image_gen.provider: azure-openai` in
