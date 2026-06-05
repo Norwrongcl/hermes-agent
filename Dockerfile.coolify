@@ -2,6 +2,9 @@ FROM nousresearch/hermes-agent:latest
 
 COPY deploy/hermes/SOUL.md /opt/hermes/vcm/SOUL.md
 COPY deploy/hermes/.hermes.md /opt/hermes/vcm/.hermes.md
+COPY toolsets.py /opt/hermes/toolsets.py
+COPY tools/contenthub_vcm_tool.py /opt/hermes/tools/contenthub_vcm_tool.py
+COPY skills/domain/contenthub-vcm/ /opt/hermes/skills/domain/contenthub-vcm/
 
 RUN cat > /etc/cont-init.d/00-vcm-context <<'EOF' && chmod +x /etc/cont-init.d/00-vcm-context
 #!/bin/sh
@@ -18,4 +21,8 @@ cp /opt/hermes/vcm/.hermes.md "$HERMES_HOME/.hermes.md"
 
 chown hermes:hermes "$HERMES_HOME/SOUL.md" "$HERMES_HOME/.hermes.md" 2>/dev/null || true
 chmod 0640 "$HERMES_HOME/SOUL.md" "$HERMES_HOME/.hermes.md" 2>/dev/null || true
+
+mkdir -p "$HERMES_HOME/skills/domain/contenthub-vcm"
+cp -R /opt/hermes/skills/domain/contenthub-vcm/. "$HERMES_HOME/skills/domain/contenthub-vcm/"
+chown -R hermes:hermes "$HERMES_HOME/skills/domain/contenthub-vcm" 2>/dev/null || true
 EOF
