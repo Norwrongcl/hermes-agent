@@ -1,16 +1,24 @@
-"""Azure OpenAI image generation backend.
+"""Azure AI Foundry image generation backend.
 
-Routes Hermes ``image_generate`` calls through an Azure OpenAI / Azure AI
-Foundry image deployment. The active deployment is configured with:
+Routes Hermes ``image_generate`` calls through an Azure AI Foundry provider
+endpoint such as Black Forest Labs FLUX.2 Pro. The active endpoint can be
+configured either as a full URL:
 
-    AZURE_FOUNDRY_BASE_URL=https://<resource>.openai.azure.com
-    AZURE_FOUNDRY_API_KEY=<key>
-    AZURE_IMAGE_DEPLOYMENT=<deployment-name>
+    AZURE_IMAGE_ENDPOINT=https://<resource>.services.ai.azure.com/providers/blackforestlabs/v1/flux-2-pro
+
+or as parts:
+
+    AZURE_FOUNDRY_BASE_URL=https://<resource>.services.ai.azure.com
+    AZURE_IMAGE_PROVIDER=blackforestlabs
+    AZURE_IMAGE_DEPLOYMENT=flux-2-pro
+
+Authentication uses a bearer token from ``AZURE_API_KEY`` or
+``AZURE_FOUNDRY_API_KEY``.
 
 Optional:
 
-    AZURE_IMAGE_API_VERSION=2025-04-01-preview
-    AZURE_IMAGE_MODEL=gpt-image-1-medium
+    AZURE_IMAGE_API_VERSION=preview
+    AZURE_IMAGE_MODEL=FLUX.2-pro
 
 The provider returns a local cached image path under
 ``$HERMES_HOME/cache/images/``.
@@ -36,34 +44,23 @@ from agent.image_gen_provider import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_VERSION = "2025-04-01-preview"
-DEFAULT_MODEL = "gpt-image-1-medium"
+DEFAULT_API_VERSION = "preview"
+DEFAULT_PROVIDER = "blackforestlabs"
+DEFAULT_DEPLOYMENT = "flux-2-pro"
+DEFAULT_MODEL = "FLUX.2-pro"
 
 _MODELS: Dict[str, Dict[str, Any]] = {
-    "gpt-image-1-low": {
-        "display": "Azure GPT Image 1 (Low)",
-        "speed": "fast",
-        "strengths": "Drafts and quick iteration",
-        "quality": "low",
-    },
-    "gpt-image-1-medium": {
-        "display": "Azure GPT Image 1 (Medium)",
-        "speed": "balanced",
-        "strengths": "Institutional social content",
-        "quality": "medium",
-    },
-    "gpt-image-1-high": {
-        "display": "Azure GPT Image 1 (High)",
-        "speed": "slower",
-        "strengths": "Higher fidelity review assets",
-        "quality": "high",
+    "FLUX.2-pro": {
+        "display": "Azure FLUX.2 Pro",
+        "speed": "provider dependent",
+        "strengths": "Black Forest Labs photorealistic image generation",
     },
 }
 
 _SIZES = {
-    "landscape": "1536x1024",
-    "square": "1024x1024",
-    "portrait": "1024x1536",
+    "landscape": (1536, 864),
+    "square": (1024, 1024),
+    "portrait": (864, 1536),
 }
 
 
@@ -109,14 +106,13 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
 
     @property
     def display_name(self) -> str:
-        return "Azure OpenAI"
+        return "Azure AI Foundry"
 
     def is_available(self) -> bool:
-        return bool(
-            _env("AZURE_FOUNDRY_BASE_URL")
-            and _env("AZURE_FOUNDRY_API_KEY")
-            and _env("AZURE_IMAGE_DEPLOYMENT")
-        )
+        api_key = _env("AZURE_API_KEY") or _env("AZURE_FOUNDRY_API_KEY")
+        endpoint = _env("AZURE_IMAGE_ENDPOINT")
+        base_url = _env("AZURE_FOUNDRY_BASE_URL")
+        return bool(api_key and (endpoint or base_url))
 
     def list_models(self) -> List[Dict[str, Any]]:
         return [
@@ -135,23 +131,23 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
 
     def get_setup_schema(self) -> Dict[str, Any]:
         return {
-            "name": "Azure OpenAI",
+            "name": "Azure AI Foundry",
             "badge": "paid",
-            "tag": "Azure AI Foundry image generation through an Azure deployment",
+            "tag": "Black Forest Labs FLUX.2 Pro through Azure AI Foundry",
             "env_vars": [
                 {
                     "key": "AZURE_FOUNDRY_BASE_URL",
-                    "prompt": "Azure OpenAI endpoint, e.g. https://<resource>.openai.azure.com",
-                    "url": "https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/dall-e",
+                    "prompt": "Azure AI Foundry endpoint, e.g. https://<resource>.services.ai.azure.com",
+                    "url": "https://ai.azure.com/",
                 },
                 {
-                    "key": "AZURE_FOUNDRY_API_KEY",
-                    "prompt": "Azure OpenAI API key",
+                    "key": "AZURE_API_KEY",
+                    "prompt": "Azure AI Foundry API key",
                     "url": "https://ai.azure.com/",
                 },
                 {
                     "key": "AZURE_IMAGE_DEPLOYMENT",
-                    "prompt": "Azure image model deployment name",
+                    "prompt": "Azure image deployment slug, e.g. flux-2-pro",
                     "url": "https://ai.azure.com/",
                 },
             ],
@@ -174,17 +170,19 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
                 aspect_ratio=aspect,
             )
 
+        full_endpoint = _env("AZURE_IMAGE_ENDPOINT").rstrip("/")
         base_url = _env("AZURE_FOUNDRY_BASE_URL").rstrip("/")
-        api_key = _env("AZURE_FOUNDRY_API_KEY")
-        deployment = _env("AZURE_IMAGE_DEPLOYMENT")
+        api_key = _env("AZURE_API_KEY") or _env("AZURE_FOUNDRY_API_KEY")
+        provider = _env("AZURE_IMAGE_PROVIDER") or DEFAULT_PROVIDER
+        deployment = _env("AZURE_IMAGE_DEPLOYMENT") or DEFAULT_DEPLOYMENT
         api_version = _env("AZURE_IMAGE_API_VERSION") or DEFAULT_API_VERSION
 
-        if not base_url or not api_key or not deployment:
+        if not api_key or not (full_endpoint or base_url):
             return error_response(
                 error=(
-                    "Azure image generation is not configured. Set "
-                    "AZURE_FOUNDRY_BASE_URL, AZURE_FOUNDRY_API_KEY, and "
-                    "AZURE_IMAGE_DEPLOYMENT in Coolify."
+                    "Azure image generation is not configured. Set AZURE_API_KEY "
+                    "or AZURE_FOUNDRY_API_KEY, plus AZURE_IMAGE_ENDPOINT or "
+                    "AZURE_FOUNDRY_BASE_URL in Coolify."
                 ),
                 error_type="auth_required",
                 provider=self.name,
@@ -192,24 +190,25 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
             )
 
         model_id, meta = _resolve_model()
-        size = _SIZES.get(aspect, _SIZES["landscape"])
+        width, height = _SIZES.get(aspect, _SIZES["square"])
 
-        url = (
-            f"{base_url}/openai/deployments/{deployment}"
-            f"/images/generations?api-version={api_version}"
-        )
+        if full_endpoint:
+            url = f"{full_endpoint}?api-version={api_version}"
+        else:
+            url = f"{base_url}/providers/{provider}/v1/{deployment}?api-version={api_version}"
         payload: Dict[str, Any] = {
             "prompt": prompt,
-            "size": size,
+            "model": model_id,
+            "width": width,
+            "height": height,
             "n": 1,
-            "quality": meta["quality"],
         }
 
         try:
             response = httpx.post(
                 url,
                 headers={
-                    "api-key": api_key,
+                    "authorization": f"Bearer {api_key}",
                     "content-type": "application/json",
                     "accept": "application/json",
                 },
@@ -283,9 +282,10 @@ class AzureOpenAIImageGenProvider(ImageGenProvider):
             )
 
         extra: Dict[str, Any] = {
+            "provider_endpoint": provider,
             "deployment": deployment,
-            "size": size,
-            "quality": meta["quality"],
+            "width": width,
+            "height": height,
             "api_version": api_version,
         }
         if revised_prompt:
