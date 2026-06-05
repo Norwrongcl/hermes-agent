@@ -26,6 +26,9 @@ ui-tui/packages/hermes-ink/dist/
 .env
 
 *.md
+!deploy/hermes/.hermes.md
+!deploy/hermes/SOUL.md
+!skills/domain/contenthub-vcm/**/*.md
 
 # Runtime data (bind-mounted at /opt/data; must not leak into build context)
 data/
