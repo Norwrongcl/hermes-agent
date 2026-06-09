@@ -15,6 +15,15 @@ Use Convex as the source of truth. Hermes can perform document-level CRUD throug
 - Use `contenthub_vcm_query` for overview, schema, get/create/update/delete, or compatibility with older operation-based calls.
 - `contenthub_vcm_list` accepts flexible filters: exact values, arrays, `$contains`, `$in`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, plus `sortBy`, `sortDirection`, `fields`, and `limit`.
 
+## Decision Playbook
+
+1. Classify the request as read, create, update, delete, report, or CM workflow.
+2. Map the words in the request to an entity and field before choosing search. Status words usually map to `status`, not text search.
+3. Read live records with `contenthub_vcm_list` or `contenthub_vcm_query`. Do not answer from memory when the data is operational.
+4. If the read returns zero records, check whether a neighboring status or all-record listing would clarify the answer before finalizing. Example: for "convenios activos", if `status=activo` is empty, mention whether `por_verificar` records exist.
+5. For writes, confirm the target record, include `reason`, and mutate only one document per call.
+6. After any write, return table, id, changed fields, reason, and next operational step.
+
 ## Current Read Endpoints
 
 Base site URL: `https://careful-monitor-525.convex.site`
@@ -71,6 +80,7 @@ Examples:
 - Prefer live Convex data over memory when answering operational questions.
 - Prefer `contenthub_vcm_list` over `contenthub_vcm_query(operation="overview")` when the user asks for records by status or wants all records.
 - For status, type, role, channel, line, and date filters, use `/hermes/crud/list` with exact `filters`; do not use text search.
+- Do not conclude "no results" from a free-text query when an entity status field exists. Retry with an explicit filter or list all relevant records for inspection.
 - Include record names, status, and timestamps when available.
 - Use `/hermes/schema` when unsure about table names, searchable fields, or soft-delete behavior.
 - If an endpoint fails, say the system cannot verify live data and log the error.
@@ -119,6 +129,8 @@ Examples:
 - Prefer soft delete when the table has a status field. `/hermes/crud/delete` with `mode: "soft"` maps records to a closed, inactive, rejected, or read state.
 - Hard delete is single-record only and requires `confirm: "PERMANENT_DELETE_ONE"`.
 - Do not patch `_id` or `_creationTime`.
+- Do not schedule content proposals unless the existing record is already `aprobada` or a privileged CM/coordinator explicitly approves that transition in the same conversation.
+- Do not assume external publication providers exist. If no provider tool is configured, only update or recommend internal ContentHub state.
 - After every write, summarize the table, id, changed fields, and audit reason.
 - For ambiguous user requests, first list matching records and ask which specific record to mutate.
 

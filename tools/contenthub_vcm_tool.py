@@ -115,9 +115,12 @@ CONTENTHUB_VCM_SCHEMA = {
     "name": "contenthub_vcm_query",
     "description": (
         "Consulta y modifica datos operativos reales de ContentHub VcM desde Convex. "
-        "Usar para revisar actividades en riesgo, reportes pendientes, "
-        "evidencias faltantes, auditoria reciente, busquedas institucionales "
-        "y CRUD documental auditado."
+        "Convex es la fuente de verdad: usar antes de responder sobre convenios, "
+        "actividades, evidencias, reportes, propuestas de contenido, indicadores, "
+        "notificaciones o auditoria. Para listas por estado/tipo/canal/fecha, "
+        "preferir operation=list o la tool contenthub_vcm_list; para overview, schema, "
+        "get/create/update/delete usar esta tool. CRUD es documental y auditado: "
+        "sin drops, sin cascades, sin truncates, sin borrados masivos."
     ),
     "parameters": {
         "type": "object",
@@ -137,7 +140,12 @@ CONTENTHUB_VCM_SCHEMA = {
                     "update",
                     "delete",
                 ],
-                "description": "Consulta operativa a ejecutar.",
+                "description": (
+                    "Consulta operativa a ejecutar. Usa list para preguntas como 'convenios activos', "
+                    "'todos los convenios', 'evidencias faltantes', 'propuestas pendientes' o "
+                    "'actividades por region'. Usa search solo para texto libre; usa schema si dudas "
+                    "sobre entidades/campos; usa overview para resumen ejecutivo."
+                ),
             },
             "entity": {
                 "type": "string",
@@ -146,7 +154,11 @@ CONTENTHUB_VCM_SCHEMA = {
             },
             "query": {
                 "type": "string",
-                "description": "Texto de busqueda o filtro natural. Ej: activo, vigente, todos.",
+                "description": (
+                    "Texto de busqueda o filtro natural. Ej: activo, vigente, todos. "
+                    "Para estados conocidos conviene usar filters; no concluyas cero resultados "
+                    "solo por buscar una palabra si existe un campo status."
+                ),
             },
             "filters": {
                 "type": "object",
@@ -163,11 +175,19 @@ CONTENTHUB_VCM_SCHEMA = {
             },
             "data": {
                 "type": "object",
-                "description": "Documento para create.",
+                "description": (
+                    "Documento para create. Usar solo campos existentes de la entidad. "
+                    "Para propuestas CM usar contentProposals con channel, format, copy, hashtags, "
+                    "visualBrief, activityId si existe y status normalmente pendiente."
+                ),
             },
             "patch": {
                 "type": "object",
-                "description": "Campos a modificar para update.",
+                "description": (
+                    "Campos a modificar para update. No modificar _id ni _creationTime. "
+                    "Para programacion CM, solo usar campos existentes como status y scheduledAt, "
+                    "y no programar propuestas no aprobadas."
+                ),
             },
             "mode": {
                 "type": "string",
@@ -180,7 +200,10 @@ CONTENTHUB_VCM_SCHEMA = {
             },
             "reason": {
                 "type": "string",
-                "description": "Motivo obligatorio para operaciones de escritura.",
+                "description": (
+                    "Motivo obligatorio para operaciones de escritura. Debe ser audit-ready, "
+                    "por ejemplo 'CM solicito crear propuesta LinkedIn desde actividad X'."
+                ),
             },
             "limit": {
                 "type": "integer",
@@ -217,10 +240,11 @@ _GET_PATHS = {
 CONTENTHUB_VCM_LIST_SCHEMA = {
     "name": "contenthub_vcm_list",
     "description": (
-        "Lista registros reales de una tabla ContentHub VcM desde Convex con filtros exactos. "
-        "Usar para preguntas como 'convenios activos', 'listar todos los convenios', "
-        "'evidencias solicitadas' o 'reportes pendientes'. Preferir esta tool sobre overview/search "
-        "cuando el usuario pide una lista por estado, tipo o tabla."
+        "Lista registros reales de una tabla ContentHub VcM desde Convex con filtros flexibles. "
+        "Preferir para preguntas por entidad/estado/tipo/canal/fecha: 'convenios activos', "
+        "'listar todos los convenios', 'evidencias faltantes', 'reportes pendientes', "
+        "'propuestas de contenido pendientes', 'actividades en riesgo'. Evita responder "
+        "cero resultados por una busqueda textual pobre: inspecciona la entidad y campos plausibles."
     ),
     "parameters": {
         "type": "object",
@@ -295,7 +319,24 @@ _STATUS_ALIASES = {
 }
 
 
-_LIST_ALL_TERMS = {"", "todo", "todos", "todas", "all", "list", "lista", "listar", "convenio", "convenios"}
+_LIST_ALL_TERMS = {
+    "",
+    "todo",
+    "todos",
+    "todas",
+    "all",
+    "list",
+    "lista",
+    "listar",
+    "listar todo",
+    "listar todos",
+    "listar todas",
+    "lista todo",
+    "lista todos",
+    "lista todas",
+    "convenio",
+    "convenios",
+}
 
 
 def _env(name: str) -> str:
@@ -329,7 +370,7 @@ def _tool_error(message: str, *, error_type: str = "contenthub_vcm_error") -> st
 
 
 def _natural_filters(entity: str | None, query: str | None) -> dict[str, Any] | None:
-    if entity != "agreements":
+    if not entity or "status" not in ENTITY_CATALOG.get(entity, {}).get("fields", []):
         return None
 
     normalized = " ".join((query or "").strip().lower().replace("_", " ").split())

@@ -36,3 +36,18 @@ Return a structured decision:
 - Route copy, hashtags, carousel, reel, or post drafts to `hermes-content-proposals`.
 - Route scheduling or publication status to `hermes-publishing-calendar`.
 - Never publish, persist critical data, or notify external parties without the target skill approval gate.
+
+## Operational Routing Examples
+
+- "Dime los convenios activos" -> `consultar_estado`, `hermes-convex-sync`, read-only, use `contenthub_vcm_list`.
+- "Lista todos los convenios" -> `consultar_estado`, `hermes-convex-sync`, read-only, list all `agreements`.
+- "Que evidencias faltan" -> `consultar_estado`, `hermes-evidence-orchestration`, read-only/list `evidenceFiles` with `status=solicitada`.
+- "Genera una propuesta para LinkedIn" -> `crear_contenido`, `hermes-content-proposals`, approval required before persistence/scheduling.
+- "Programa esta propuesta" -> `programar_publicacion`, `hermes-publishing-calendar`, approval required; verify `contentProposals.status=aprobada` first.
+
+## Approval Gates
+
+- Docente can report activities and provide evidence, but cannot approve institutional publication.
+- CM and coordinadora can approve content workflows when identity is known.
+- Director can request reports and review indicators; publication actions still need the CM/coordinadora workflow unless local policy says otherwise.
+- Unknown users get read-limited help and explicit next steps; do not mutate records for them.
