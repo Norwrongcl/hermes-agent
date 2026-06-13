@@ -1,8 +1,9 @@
 """ContentHub Drive evidence storage tool.
 
-Uploads and organizes VcM evidence files in a Google Drive folder shared with
-Hermes' service account. Convex remains the source of truth; this tool only
-returns Drive IDs, URLs, and folder metadata for the ContentHub tool to audit.
+Uploads and organizes VcM evidence files in Google Drive using OAuth user
+credentials or a service account. Convex remains the source of truth; this tool
+only returns Drive IDs, URLs, and folder metadata for the ContentHub tool to
+audit.
 """
 
 from __future__ import annotations
@@ -23,11 +24,12 @@ DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 CONTENTHUB_DRIVE_SCHEMA = {
     "name": "contenthub_drive_evidence",
     "description": (
-        "Crea carpetas y sube evidencias VcM a Google Drive usando la cuenta "
-        "de servicio de Hermes. Usar cuando Hermes recibe fotos, PDF, videos, "
-        "audios o documentos por WhatsApp/Telegram/email/dashboard y necesita "
-        "dejarlos en la carpeta institucional correcta. Luego registrar los "
-        "driveFileId, driveFolderId, webViewLink y estado en Convex con "
+        "Crea carpetas y sube evidencias VcM a Google Drive usando OAuth de "
+        "una cuenta institucional o la cuenta de servicio de Hermes. Usar "
+        "cuando Hermes recibe fotos, PDF, videos, audios o documentos por "
+        "WhatsApp/Telegram/email/dashboard y necesita dejarlos en la carpeta "
+        "institucional correcta. Luego registrar los driveFileId, "
+        "driveFolderId, webViewLink y estado en Convex con "
         "contenthub_vcm_query/contenthub_vcm_list."
     ),
     "parameters": {
@@ -122,13 +124,22 @@ def _env(name: str) -> str:
 
 
 def check_contenthub_drive_requirements() -> bool:
+    has_oauth = bool(
+        _env("GOOGLE_OAUTH_REFRESH_TOKEN")
+        and (
+            _env("GOOGLE_OAUTH_CLIENT_JSON")
+            or _env("GOOGLE_OAUTH_CLIENT_JSON_B64")
+            or _env("GOOGLE_OAUTH_CLIENT_FILE")
+        )
+    )
+    has_service_account = bool(
+        _env("GOOGLE_SERVICE_ACCOUNT_JSON")
+        or _env("GOOGLE_SERVICE_ACCOUNT_JSON_B64")
+        or _env("GOOGLE_SERVICE_ACCOUNT_FILE")
+    )
     return bool(
         _env("CONTENTHUB_DRIVE_ROOT_FOLDER_ID")
-        and (
-            _env("GOOGLE_SERVICE_ACCOUNT_JSON")
-            or _env("GOOGLE_SERVICE_ACCOUNT_JSON_B64")
-            or _env("GOOGLE_SERVICE_ACCOUNT_FILE")
-        )
+        and (has_oauth or has_service_account)
     )
 
 
@@ -148,8 +159,40 @@ def _service_account_info() -> dict[str, Any]:
     )
 
 
+def _oauth_client_info() -> dict[str, Any]:
+    raw_json = _env("GOOGLE_OAUTH_CLIENT_JSON")
+    raw_b64 = _env("GOOGLE_OAUTH_CLIENT_JSON_B64")
+    file_path = _env("GOOGLE_OAUTH_CLIENT_FILE")
+
+    if raw_json:
+        data = json.loads(raw_json)
+    elif raw_b64:
+        data = json.loads(base64.b64decode(raw_b64).decode("utf-8"))
+    elif file_path:
+        data = json.loads(Path(file_path).read_text(encoding="utf-8"))
+    else:
+        raise RuntimeError(
+            "Missing GOOGLE_OAUTH_CLIENT_JSON, GOOGLE_OAUTH_CLIENT_JSON_B64, or GOOGLE_OAUTH_CLIENT_FILE."
+        )
+
+    return data.get("installed") or data.get("web") or data
+
+
+def _has_oauth_credentials() -> bool:
+    return bool(
+        _env("GOOGLE_OAUTH_REFRESH_TOKEN")
+        and (
+            _env("GOOGLE_OAUTH_CLIENT_JSON")
+            or _env("GOOGLE_OAUTH_CLIENT_JSON_B64")
+            or _env("GOOGLE_OAUTH_CLIENT_FILE")
+        )
+    )
+
+
 def _drive_service():
     try:
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
     except ImportError as exc:
@@ -158,10 +201,22 @@ def _drive_service():
             "or add google-api-python-client and google-auth."
         ) from exc
 
-    credentials = service_account.Credentials.from_service_account_info(
-        _service_account_info(),
-        scopes=DRIVE_SCOPES,
-    )
+    if _has_oauth_credentials():
+        client = _oauth_client_info()
+        credentials = Credentials(
+            token=None,
+            refresh_token=_env("GOOGLE_OAUTH_REFRESH_TOKEN"),
+            token_uri=client.get("token_uri") or "https://oauth2.googleapis.com/token",
+            client_id=client.get("client_id"),
+            client_secret=client.get("client_secret"),
+            scopes=DRIVE_SCOPES,
+        )
+        credentials.refresh(Request())
+    else:
+        credentials = service_account.Credentials.from_service_account_info(
+            _service_account_info(),
+            scopes=DRIVE_SCOPES,
+        )
     return build("drive", "v3", credentials=credentials, cache_discovery=False)
 
 
@@ -372,7 +427,11 @@ registry.register(
     check_fn=check_contenthub_drive_requirements,
     requires_env=[
         "CONTENTHUB_DRIVE_ROOT_FOLDER_ID",
-        "GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_JSON_B64 or GOOGLE_SERVICE_ACCOUNT_FILE",
+        (
+            "GOOGLE_OAUTH_REFRESH_TOKEN plus GOOGLE_OAUTH_CLIENT_JSON/GOOGLE_OAUTH_CLIENT_JSON_B64/"
+            "GOOGLE_OAUTH_CLIENT_FILE, or GOOGLE_SERVICE_ACCOUNT_JSON/GOOGLE_SERVICE_ACCOUNT_JSON_B64/"
+            "GOOGLE_SERVICE_ACCOUNT_FILE"
+        ),
     ],
     description=CONTENTHUB_DRIVE_SCHEMA["description"],
     emoji="",
