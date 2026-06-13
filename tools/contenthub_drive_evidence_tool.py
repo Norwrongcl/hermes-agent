@@ -348,8 +348,17 @@ def contenthub_drive_evidence(args: dict[str, Any], **kw) -> str:
 
         return tool_error(f"Unsupported operation: {operation}", error_type="invalid_operation")
     except Exception as exc:
+        details = str(exc)
+        if "Service Accounts do not have storage quota" in details:
+            return tool_error(
+                "Google Drive rejected the upload because service accounts do not have storage quota. "
+                "Use a Google Workspace Shared Drive as CONTENTHUB_DRIVE_ROOT_FOLDER_ID, or configure "
+                "OAuth/domain-wide delegation for a real Workspace user.",
+                error_type="service_account_storage_quota",
+                source="contenthub_drive",
+            )
         return tool_error(
-            str(exc),
+            details,
             error_type=type(exc).__name__,
             source="contenthub_drive",
         )
