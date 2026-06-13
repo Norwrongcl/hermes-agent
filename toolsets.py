@@ -54,6 +54,8 @@ _HERMES_CORE_TOOLS = [
     "contenthub_vcm_query", "contenthub_vcm_list",
     # ContentHub VcM evidence files in Google Drive
     "contenthub_drive_evidence",
+    # ContentHub VcM Google Forms without browser automation
+    "contenthub_google_form",
     # Clarifying questions
     "clarify",
     # Code execution + delegation
@@ -241,6 +243,12 @@ TOOLSETS = {
     "contenthub_drive": {
         "description": "ContentHub VcM Google Drive evidence folder and file operations",
         "tools": ["contenthub_drive_evidence"],
+        "includes": []
+    },
+
+    "contenthub_forms": {
+        "description": "ContentHub VcM Google Forms inspection and submission without a browser",
+        "tools": ["contenthub_google_form"],
         "includes": []
     },
     

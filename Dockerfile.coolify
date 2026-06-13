@@ -5,6 +5,7 @@ COPY deploy/hermes/.hermes.md /opt/hermes/vcm/.hermes.md
 COPY toolsets.py /opt/hermes/toolsets.py
 COPY tools/contenthub_vcm_tool.py /opt/hermes/tools/contenthub_vcm_tool.py
 COPY tools/contenthub_drive_evidence_tool.py /opt/hermes/tools/contenthub_drive_evidence_tool.py
+COPY tools/contenthub_google_forms_tool.py /opt/hermes/tools/contenthub_google_forms_tool.py
 COPY plugins/image_gen/azure-openai/ /opt/hermes/plugins/image_gen/azure-openai/
 COPY skills/domain/contenthub-vcm/ /opt/hermes/skills/domain/contenthub-vcm/
 
@@ -75,9 +76,9 @@ if not isinstance(platform_toolsets, dict):
 
 required = {
     "cli": ["hermes-cli"],
-    "telegram": ["hermes-telegram", "image_gen", "contenthub_vcm", "contenthub_drive"],
-    "whatsapp": ["hermes-whatsapp", "image_gen", "contenthub_vcm", "contenthub_drive"],
-    "api_server": ["hermes-api-server", "image_gen", "contenthub_vcm", "contenthub_drive"],
+    "telegram": ["hermes-telegram", "image_gen", "contenthub_vcm", "contenthub_drive", "contenthub_forms"],
+    "whatsapp": ["hermes-whatsapp", "image_gen", "contenthub_vcm", "contenthub_drive", "contenthub_forms"],
+    "api_server": ["hermes-api-server", "image_gen", "contenthub_vcm", "contenthub_drive", "contenthub_forms"],
 }
 for platform, toolsets in required.items():
     current = platform_toolsets.get(platform)
