@@ -196,10 +196,20 @@ def _drive_service():
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
     except ImportError as exc:
-        raise RuntimeError(
-            "Google Drive dependencies are missing. Install hermes-agent[google] "
-            "or add google-api-python-client and google-auth."
-        ) from exc
+        try:
+            from tools.lazy_deps import ensure
+
+            ensure("skill.google_workspace", prompt=False)
+            from google.auth.transport.requests import Request
+            from google.oauth2.credentials import Credentials
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+        except Exception as lazy_exc:
+            raise RuntimeError(
+                "Google Drive dependencies are missing and lazy install failed. "
+                "Install hermes-agent[google] or add google-api-python-client, "
+                "google-auth-oauthlib and google-auth-httplib2."
+            ) from lazy_exc
 
     if _has_oauth_credentials():
         client = _oauth_client_info()

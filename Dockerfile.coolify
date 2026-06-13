@@ -8,11 +8,6 @@ COPY tools/contenthub_drive_evidence_tool.py /opt/hermes/tools/contenthub_drive_
 COPY plugins/image_gen/azure-openai/ /opt/hermes/plugins/image_gen/azure-openai/
 COPY skills/domain/contenthub-vcm/ /opt/hermes/skills/domain/contenthub-vcm/
 
-RUN /opt/hermes/.venv/bin/python -m pip install --no-cache-dir \
-    google-api-python-client==2.194.0 \
-    google-auth-oauthlib==1.3.1 \
-    google-auth-httplib2==0.3.1
-
 RUN cat > /etc/cont-init.d/00-vcm-context <<'EOF' && chmod +x /etc/cont-init.d/00-vcm-context
 #!/bin/sh
 set -eu
