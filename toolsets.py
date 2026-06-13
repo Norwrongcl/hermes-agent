@@ -52,6 +52,8 @@ _HERMES_CORE_TOOLS = [
     "session_search",
     # ContentHub VcM operational data from Convex
     "contenthub_vcm_query", "contenthub_vcm_list",
+    # ContentHub VcM evidence files in Google Drive
+    "contenthub_drive_evidence",
     # Clarifying questions
     "clarify",
     # Code execution + delegation
@@ -233,6 +235,12 @@ TOOLSETS = {
     "contenthub_vcm": {
         "description": "ContentHub VcM operational CRUD from Convex with audit guardrails",
         "tools": ["contenthub_vcm_query", "contenthub_vcm_list"],
+        "includes": []
+    },
+
+    "contenthub_drive": {
+        "description": "ContentHub VcM Google Drive evidence folder and file operations",
+        "tools": ["contenthub_drive_evidence"],
         "includes": []
     },
     
